@@ -1,0 +1,60 @@
+#!/bin/bash
+
+composer "global" "config" "http-basic.repo.magento.com" "$MAGE2_PUBLIC_KEY" "$MAGE2_PRIVATE_KEY"
+
+mageConfig() {
+cat <<EOF > /root/.n98-magerun2.yaml
+commands:
+  N98\Magento\Command\Installer\InstallCommand:
+    installation:
+      defaults:
+        locale: "$MAGE_LOCALE"
+        timezone: "$MAGENTO_TZ"
+        currency: "$MAGE_CURRENCY"
+        use_secure: "$MAGE_SECURE"
+        admin_username: "$MAGE_ADMIN_USERNAME"
+        admin_firstname: "$MAGE_ADMIN_FIRSTNAME"
+        admin_lastname: "$MAGE_ADMIN_LASTNAME"
+        admin_password: "$MAGE_ADMIN_PASSWORD"
+        admin_email: "$MAGE_ADMIN_EMAIL"
+EOF
+}
+
+mageInstall() {
+    magerun2 install\
+        --skip-root-check\
+        --installationFolder="."\
+	--dbHost="$MYSQL_HOST"\
+	--dbUser="root"\
+	--dbPass="$MYSQL_ROOT_PASSWORD"\
+	--dbName="$HOSTNAME"\
+	--installSampleData="yes"\
+	--useDefaultConfigParams="yes"\
+	--baseUrl="http://$VIRTUAL_HOST/"\
+	--replaceHtaccessFile="yes"
+}
+
+mageConfig
+if ! mageInstall
+then
+	echo "Something goes wrong. Exit."
+else
+
+chown -R www-data. /var/www/html
+
+cat <<EOF
+======================
+
+http://$VIRTUAL_HOST/admin
+
+user: 	 "$MAGE_ADMIN_USERNAME"
+pass: 	 "$MAGE_ADMIN_PASSWORD"
+
+db user: root
+db pass: "$MYSQL_ROOT_PASSWORD"
+
+======================
+EOF
+fi
+
+exit 0
